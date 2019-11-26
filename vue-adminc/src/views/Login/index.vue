@@ -76,9 +76,10 @@
 </template>
 
 <script>
+import sha1 from "js-sha1";
 import { Message } from "element-ui";
 import { GetSms, Register, Login } from "@/api/login";
-import { reactive, ref, onMounted } from "@vue/composition-api";
+import { reactive, ref, onMounted, root } from "@vue/composition-api";
 import {
   stripscript,
   validateMail,
@@ -89,11 +90,11 @@ export default {
   name: "login",
   // setup(props, context) {
   /**
-     * attrs: (...) this.attrs
-      emit: (...) this.emit
-      listeners: (...) this.listeners
-      parent: (...) this.parent
-      refs: (...) this.refs
+     * attrs: (...) this.$attrs
+      emit: (...) this.$emit
+      listeners: (...) this.$listeners
+      parent: (...) this.$parent
+      refs: (...) this.$refs
       root: (...) this
      */
   setup(props, { refs, root }) {
@@ -159,6 +160,7 @@ export default {
     const model = ref("login");
     //登录按钮状态
     const loginButtonStatus = ref(true);
+    //验证码的按钮状态
     const codeButtonStatus = reactive({
       status: false,
       text: "获取验证码"
@@ -190,8 +192,18 @@ export default {
       });
       data.current = true;
       model.value = data.type;
+      reserFormData();
+      clearcountDown();
+    };
+    //重置表单
+    const reserFormData = () => {
       //this.$refs[formName].resetFields(); //2.0写法
       refs.loginForm.resetFields();
+    };
+    //跟新按钮的状态
+    const updateButtonStatus = params => {
+      codeButtonStatus.status = params.status;
+      codeButtonStatus.text = params.text;
     };
     /**
      * 获取验证码
@@ -212,9 +224,11 @@ export default {
         username: ruleForm.username,
         module: model.value
       };
-
-      codeButtonStatus.status = true;
-      codeButtonStatus.text = "发送中";
+      //修改获取验证码按钮状态
+      updateButtonStatus({
+        status: true,
+        text: "发送中"
+      });
       GetSms(requestData)
         .then(response => {
           let data = response.data;
@@ -224,8 +238,8 @@ export default {
           });
           //启用登录注册按钮
           loginButtonStatus.value = false;
-          //调用定时器
-          countDown(5);
+          //调用倒定时
+          countDown(60);
         })
         .catch(error => {
           console.log(error);
@@ -238,9 +252,9 @@ export default {
       refs[formName].validate(valid => {
         if (valid) {
           //表单验证成功
-         model.value === "login" ? login() : register()
-        }else{
-          console.log("error submit!!")
+          model.value === "login" ? login() : register();
+        } else {
+          console.log("error submit!!");
           return false;
         }
       });
@@ -251,7 +265,7 @@ export default {
     const login = () => {
       let requestData = {
         username: ruleForm.username,
-        password: ruleForm.password,
+        password: sha1(ruleForm.password),
         code: ruleForm.code
       };
       Login(requestData)
@@ -261,6 +275,10 @@ export default {
             message: data.message,
             type: "success"
           });
+          //页面跳转
+          root.$router.push({
+            name: "Console"
+          })
         })
         .catch(error => {});
     };
@@ -271,7 +289,7 @@ export default {
     const register = () => {
       let requestData = {
         username: ruleForm.username,
-        password: ruleForm.password,
+        password: sha1(ruleForm.password),
         code: ruleForm.code,
         module: "register"
       };
@@ -302,8 +320,10 @@ export default {
         time--;
         if (time === 0) {
           clearInterval(timer.value);
-          codeButtonStatus.status = false;
-          codeButtonStatus.text = "再次获取";
+          updateButtonStatus({
+            status: false,
+            text: "再次获取"
+          });
         } else {
           codeButtonStatus.text = `倒计时${time}秒`; //es5 '倒计时'+time+'秒'
         }
@@ -315,8 +335,10 @@ export default {
      */
 
     const clearcountDown = () => {
-      codeButtonStatus.status = false;
-      codeButtonStatus.text = "获取验证码";
+      updateButtonStatus({
+        status: false,
+        text: "获取验证码"
+      });
       //清理定时器
       clearInterval(timer.value);
     };

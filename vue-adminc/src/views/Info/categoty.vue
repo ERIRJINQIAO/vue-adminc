@@ -1,6 +1,6 @@
 <template>
 <div>
-    用户首页
+    信息分类
 </div>
 </template>
 <script>

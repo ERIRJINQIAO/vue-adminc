@@ -8,7 +8,9 @@ const service = axios.create({
   timeout: 10000
 });
 
-// 添加请求拦截器
+/**
+ * 请求接口前，做一些数据处理（请求拦截器）
+ */
 service.interceptors.request.use(
   function(config) {
     // 在发送请求之前做些什么
@@ -20,9 +22,12 @@ service.interceptors.request.use(
   }
 );
 
-// 添加响应拦截器
+/**
+ * 请求接口后，返回数据进行拦截（响应拦截器）
+ */
 service.interceptors.response.use(function(response) {
   let data = response.data;
+
   if (data.resCode !== 0) {
     Message.error(data.message);
     return Promise.reject(data);
